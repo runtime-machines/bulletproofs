@@ -803,9 +803,24 @@ impl<'de> Deserialize<'de> for RangeProof {
                 return RangeProof::from_bytes(v)
                     .map_err(|_| serde::de::Error::custom("deserialization error"));
             }
-        }
 
-        deserializer.deserialize_bytes(RangeProofVisitor)
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let mut v: Vec<u8> = Vec::new();
+                while let Some(val) = seq.next_element()? {
+                    v.push(val)
+                }
+                #[cfg(feature = "std")]
+                return RangeProof::from_bytes(&v).map_err(serde::de::Error::custom);
+                // In no-std contexts, drop the error message.
+                #[cfg(not(feature = "std"))]
+                return RangeProof::from_bytes(&v)
+                    .map_err(|_| serde::de::Error::custom("deserialization error"));
+            }
+        }
+        deserializer.deserialize_seq(RangeProofVisitor)
     }
 }
 
